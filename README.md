@@ -56,6 +56,24 @@ Usage: smoke [arguments]
     --help                           Show this help
 ```
 
+## Docker
+
+A `Dockerfile` is provided which borrows heavily from https://github.com/bcardiff/miniserver which helps to create a ~12MB image.
+
+```sh
+# run pre-build image
+docker run -it --rm ddrscott/smoke
+
+# build local image
+docker build -t smoke .
+
+# run local image
+docker run -it --rm smoke
+
+# run local image as server
+docker run -it --rm -p 3000:3000 smoke -p 3000
+```
+
 ## Development
 
 Crystal doesn't support hot code reloading, so we use `entr` to restart the program anytime a source file changes.
