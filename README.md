@@ -2,6 +2,10 @@
 
 Make your terminal smoke.
 
+```sh
+curl https://smoke-tty.herokuapp.com
+```
+
 <img src="smoke-demo.gif" alt="terminal demo animated gif"/>
 
 ## Usage

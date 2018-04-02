@@ -84,7 +84,7 @@ end
 
 server = false
 host = "0.0.0.0"
-port = 3000
+port = ENV.fetch("PORT", "3000").to_i
 cols = 60
 rows = 15
 fps = 15
@@ -115,7 +115,10 @@ Signal::INT.trap { puts "Caught Ctrl+C..."; exit }
 Signal::TERM.trap { puts "Caught kill..."; exit }
 
 if server
+  puts "Starting server at #{host}:#{port}"
+
   run_http_server(host, port, default_cols: cols, default_rows: rows)
 else
+  puts "Outputting to stdout"
   Scene.new(io: STDOUT, cols: cols, rows: rows, fps: fps).run
 end
