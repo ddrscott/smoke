@@ -107,6 +107,13 @@ OptionParser.parse! do |parser|
     exit(0)
   end
 end
+
+# Handle Ctrl+C and kill signal.
+# Needed for hosting this process in a docker as the entry point command.
+# Thanks: https://github.com/bcardiff/miniserver/blob/master/src/miniserver.cr
+Signal::INT.trap { puts "Caught Ctrl+C..."; exit }
+Signal::TERM.trap { puts "Caught kill..."; exit }
+
 if server
   run_http_server(host, port, default_cols: cols, default_rows: rows)
 else
