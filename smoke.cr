@@ -1,4 +1,7 @@
 require "http/server"
+require "option_parser"
+
+FRAME_SLEEP = 0.06 # 30 fps
 NUM_COLORS = 24
 ANSI_MAP = Array.new(NUM_COLORS) { |i| "\e[48;5;#{232 + i}m " }
 
@@ -16,14 +19,14 @@ class Scene
       reset_bottom
       blend
       draw
-      sleep 0.03
+      sleep FRAME_SLEEP
     end
   end
 
+  # Fill bottom with brightest or darkest color
   def reset_bottom
     @cols.times { |x|
-      c = rand(NUM_COLORS)
-      @dots[@num_dots - x - 1] = c
+      @dots[@num_dots - x - 1] = rand(2) * NUM_COLORS
     }
   end
 
@@ -59,15 +62,47 @@ class Scene
   end
 end
 
-def main
-  server = HTTP::Server.new("0.0.0.0", 3000) do |ctx|
-    puts ctx.request.query_params.inspect
+def run_server(host, port, default_cols : Int32, default_rows : Int32)
+  server = HTTP::Server.new(host, port) do |ctx|
     ctx.response.content_type = "text/plain"
-    Scene.new(io: ctx.response, cols: 80, rows: 25).run
+    
+    # parse cols and rows
+    cols = ctx.request.query_params.fetch("cols", default_cols).to_i
+    rows = ctx.request.query_params.fetch("rows", default_rows).to_i
+
+    Scene.new(io: ctx.response, cols: cols, rows: rows).run
   end
 
-  puts "Listening on http://0.0.0.0:3000"
+  puts "Listening on http://#{host}:#{port}"
   server.listen
+end
+
+def main
+  server = false
+  host = "0.0.0.0"
+  port = 3000
+  cols = 60
+  rows = 15
+
+  OptionParser.parse! do |parser|
+    parser.banner = "Usage: smoke [arguments]"
+    parser.on("-h", "--host=IP", "server bind address") do |val|
+      host = val
+      server = true
+    end
+    parser.on("-p", "--port=PORT", "server bind port") do |val|
+      port = val.to_i
+      server = true
+    end
+    parser.on("-c COLS", "--cols=COLS", "number of columns") { |val| cols = val.to_i }
+    parser.on("-r ROWS", "--rows=NAME", "number of rows") { |val| rows = val.to_i }
+    parser.on("-h", "--help", "Show this help") { puts parser }
+  end
+  if server
+    run_server(host, port, default_cols: cols, default_rows: rows)
+  else
+    Scene.new(io: STDOUT, cols: cols, rows: rows).run
+  end
 end
 
 main
