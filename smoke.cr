@@ -1,14 +1,14 @@
 require "http/server"
 require "option_parser"
 
-FRAME_SLEEP = 0.06 # 30 fps
+FRAME_SLEEP = 1.0/15 # 15 fps
 NUM_COLORS = 24
 ANSI_MAP = Array.new(NUM_COLORS) { |i| "\e[48;5;#{232 + i}m " }
 
 class Scene
   property num_dots : Int32
 
-  def initialize(@io : IO, @cols : Int32, @rows : Int32)
+  def initialize(@io : IO, @cols : Int32, @rows : Int32, @fps : Int32)
     @num_dots = @cols * @rows + @cols
     @dots = Array(Int32).new(@num_dots) { 0 }
     @buffer = Array(Int32).new(@num_dots) { 0 }
@@ -19,7 +19,7 @@ class Scene
       reset_bottom
       blend
       draw
-      sleep FRAME_SLEEP
+      sleep 1.0/@fps
     end
   end
 
@@ -70,7 +70,8 @@ def run_server(host, port, default_cols : Int32, default_rows : Int32)
     cols = ctx.request.query_params.fetch("cols", default_cols).to_i
     rows = ctx.request.query_params.fetch("rows", default_rows).to_i
 
-    Scene.new(io: ctx.response, cols: cols, rows: rows).run
+    # Due to bandwidth, we cap at 15 FPS
+    Scene.new(io: ctx.response, cols: cols, rows: rows, fps: 15).run
   end
 
   puts "Listening on http://#{host}:#{port}"
@@ -83,25 +84,30 @@ def main
   port = 3000
   cols = 60
   rows = 15
+  fps = 15
 
   OptionParser.parse! do |parser|
     parser.banner = "Usage: smoke [arguments]"
-    parser.on("-h", "--host=IP", "server bind address") do |val|
+    parser.on("-h HOST", "--host=HOST", "server bind address") do |val|
       host = val
       server = true
     end
-    parser.on("-p", "--port=PORT", "server bind port") do |val|
+    parser.on("-p PORT", "--port=PORT", "server bind port") do |val|
       port = val.to_i
       server = true
     end
     parser.on("-c COLS", "--cols=COLS", "number of columns") { |val| cols = val.to_i }
     parser.on("-r ROWS", "--rows=NAME", "number of rows") { |val| rows = val.to_i }
-    parser.on("-h", "--help", "Show this help") { puts parser }
+    parser.on("--fps=FPS", "frame per second for stdout. Server mode capped at 15") { |val| fps = val.to_i }
+    parser.on("--help", "Show this help") do
+      puts parser
+      exit(0)
+    end
   end
   if server
     run_server(host, port, default_cols: cols, default_rows: rows)
   else
-    Scene.new(io: STDOUT, cols: cols, rows: rows).run
+    Scene.new(io: STDOUT, cols: cols, rows: rows, fps: fps).run
   end
 end
 
