@@ -16,14 +16,14 @@ By default smoke is rendered to STDOUT at 60x15 character resolution.
 ./smoke -c `tput cols` -r `tput lines`
 
 # fill your terminal at 60 FPS
-
-# fill your terminal whole terminal
 ./smoke -c `tput cols` -r `tput lines` --fps 60
 ```
 
+*Note* You'll probably need a hardware accelerated terminal emulator to make the rendering smooth. [Kitty](https://github.com/kovidgoyal/kitty), [Alacritty](https://github.com/jwilm/alacritty), and [iTerm2 Beta](https://github.com/gnachman/iTerm2) with metal rendering do a great job on Mac.
+
 ## Server
 
-Inspired by http://parrot.live, we can start an HTTP server let people stream the results. This will probably break peoples browsers, but is great using `curl`.
+Inspired by http://parrot.live, we can start an HTTP server to let people stream the results from `curl` and other CLI programs. 
 
 ```sh
 # allow all address to port 3000

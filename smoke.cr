@@ -62,53 +62,53 @@ class Scene
   end
 end
 
-def run_server(host, port, default_cols : Int32, default_rows : Int32)
+def run_http_server(host, port, default_cols : Int32, default_rows : Int32)
   server = HTTP::Server.new(host, port) do |ctx|
-    ctx.response.content_type = "text/plain"
-    
-    # parse cols and rows
-    cols = ctx.request.query_params.fetch("cols", default_cols).to_i
-    rows = ctx.request.query_params.fetch("rows", default_rows).to_i
+    if ctx.request.headers.fetch("Accept", "") =~ /html/
+      # Redirect to source code if it's a browser request.
+      ctx.response.status_code = 302
+      ctx.response.headers["Location"] = "https://github.com/ddrscott/smoke"
+    else
+      # parse cols and rows
+      cols = ctx.request.query_params.fetch("cols", default_cols).to_i
+      rows = ctx.request.query_params.fetch("rows", default_rows).to_i
 
-    # Due to bandwidth, we cap at 15 FPS
-    Scene.new(io: ctx.response, cols: cols, rows: rows, fps: 15).run
+      # Due to bandwidth, we cap at 15 FPS
+      Scene.new(io: ctx.response, cols: cols, rows: rows, fps: 15).run
+    end
   end
 
   puts "Listening on http://#{host}:#{port}"
   server.listen
 end
 
-def main
-  server = false
-  host = "0.0.0.0"
-  port = 3000
-  cols = 60
-  rows = 15
-  fps = 15
+server = false
+host = "0.0.0.0"
+port = 3000
+cols = 60
+rows = 15
+fps = 15
 
-  OptionParser.parse! do |parser|
-    parser.banner = "Usage: smoke [arguments]"
-    parser.on("-h HOST", "--host=HOST", "server bind address") do |val|
-      host = val
-      server = true
-    end
-    parser.on("-p PORT", "--port=PORT", "server bind port") do |val|
-      port = val.to_i
-      server = true
-    end
-    parser.on("-c COLS", "--cols=COLS", "number of columns") { |val| cols = val.to_i }
-    parser.on("-r ROWS", "--rows=NAME", "number of rows") { |val| rows = val.to_i }
-    parser.on("--fps=FPS", "frame per second for stdout. Server mode capped at 15") { |val| fps = val.to_i }
-    parser.on("--help", "Show this help") do
-      puts parser
-      exit(0)
-    end
+OptionParser.parse! do |parser|
+  parser.banner = "Usage: smoke [arguments]"
+  parser.on("-h HOST", "--host=HOST", "server bind address") do |val|
+    host = val
+    server = true
   end
-  if server
-    run_server(host, port, default_cols: cols, default_rows: rows)
-  else
-    Scene.new(io: STDOUT, cols: cols, rows: rows, fps: fps).run
+  parser.on("-p PORT", "--port=PORT", "server bind port") do |val|
+    port = val.to_i
+    server = true
+  end
+  parser.on("-c COLS", "--cols=COLS", "number of columns") { |val| cols = val.to_i }
+  parser.on("-r ROWS", "--rows=NAME", "number of rows") { |val| rows = val.to_i }
+  parser.on("--fps=FPS", "frame per second for stdout. Server mode capped at 15") { |val| fps = val.to_i }
+  parser.on("--help", "Show this help") do
+    puts parser
+    exit(0)
   end
 end
-
-main
+if server
+  run_http_server(host, port, default_cols: cols, default_rows: rows)
+else
+  Scene.new(io: STDOUT, cols: cols, rows: rows, fps: fps).run
+end
