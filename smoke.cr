@@ -61,6 +61,7 @@ class Scene
         dot = @dots[y * @cols + x]
         chars << (ANSI_MAP[dot] || ANSI_MAP.last)
       end
+      chars << "\n" unless y == @rows - 1
     end
     @io.print "\e[2;0H#{chars.join}\e[#{@rows};#{@cols}H\e[0m"
     @io.flush
