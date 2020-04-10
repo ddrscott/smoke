@@ -78,6 +78,16 @@ docker run -it --rm smoke
 docker run -it --rm -p 3000:3000 smoke -p 3000
 ```
 
+## Heroku Deployment
+
+```sh
+heroku login
+heroku container:login
+heroku git:remote -a smoke-tty
+heroku container:push --recursive
+heroku container:release web
+```
+
 ## Development
 
 Crystal doesn't support hot code reloading, so we use `entr` to restart the program anytime a source file changes.
