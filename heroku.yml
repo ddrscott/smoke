@@ -1,0 +1,5 @@
+build:
+  docker:
+    web: Dockerfile.web
+run:
+  web: ./smoke --host", "0.0.0.0"
