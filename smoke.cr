@@ -4,23 +4,29 @@ require "option_parser"
 FRAME_SLEEP = 1.0/15 # 15 fps
 NUM_COLORS = 24
 ANSI_MAP = Array.new(NUM_COLORS) { |i| "\e[48;5;#{232 + i}m " }
+SHOW_CURSOR = "\e[?47l"
+HIDE_CURSOR = "\e[?25l\e[2J"
 
 class Scene
   property num_dots : Int32
 
   def initialize(@io : IO, @cols : Int32, @rows : Int32, @fps : Int32)
-    @num_dots = @cols * @rows + @cols
+    @overflow = 2
+    @num_dots = @cols * (@rows + @overflow)
     @dots = Array(Int32).new(@num_dots) { 0 }
     @buffer = Array(Int32).new(@num_dots) { 0 }
   end
 
   def run
+    puts(HIDE_CURSOR)
     loop do
       reset_bottom
       blend
       draw
       sleep 1.0/@fps
     end
+  ensure
+    puts(SHOW_CURSOR)
   end
 
   # Fill bottom with brightest or darkest color
@@ -50,20 +56,19 @@ class Scene
 
   def draw
     chars = [] of String
-    @rows.times do |y|
+    (@rows - @overflow).times do |y|
       @cols.times do |x|
         dot = @dots[y * @cols + x]
         chars << (ANSI_MAP[dot] || ANSI_MAP.last)
       end
-      chars << "\n" unless y == @rows - 1
     end
-    @io.print "\e[2J\e[0;0H#{chars.join}\e[#{@rows};#{@cols}H\e[0m"
+    @io.print "\e[2;0H#{chars.join}\e[#{@rows};#{@cols}H\e[0m"
     @io.flush
   end
 end
 
 def run_http_server(host, port, default_cols : Int32, default_rows : Int32)
-  server = HTTP::Server.new(host, port) do |ctx|
+  server = HTTP::Server.new do |ctx|
     if ctx.request.headers.fetch("Accept", "") =~ /html/
       # Redirect to source code if it's a browser request.
       ctx.response.status_code = 302
@@ -77,8 +82,9 @@ def run_http_server(host, port, default_cols : Int32, default_rows : Int32)
       Scene.new(io: ctx.response, cols: cols, rows: rows, fps: 15).run
     end
   end
+  address = server.bind_tcp(host, port)
 
-  puts "Listening on http://#{host}:#{port}"
+  puts "Listening on http://#{address}"
   server.listen
 end
 
@@ -111,14 +117,13 @@ end
 # Handle Ctrl+C and kill signal.
 # Needed for hosting this process in a docker as the entry point command.
 # Thanks: https://github.com/bcardiff/miniserver/blob/master/src/miniserver.cr
-Signal::INT.trap { puts "Caught Ctrl+C..."; exit }
-Signal::TERM.trap { puts "Caught kill..."; exit }
+Signal::INT.trap { puts(SHOW_CURSOR); exit }
+Signal::TERM.trap { puts(SHOW_CURSOR); exit }
 
 if server
   puts "Starting server at #{host}:#{port}"
 
   run_http_server(host, port, default_cols: cols, default_rows: rows)
 else
-  puts "Outputting to stdout"
   Scene.new(io: STDOUT, cols: cols, rows: rows, fps: fps).run
 end
